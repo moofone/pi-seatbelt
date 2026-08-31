@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { createSeatbeltExtension, type SeatbeltManager } from "../src/index.ts";
 import { createSandboxedFindOps, executeSandboxedGrep } from "../src/operations-search.ts";
+import { RIPGREP_BIN } from "../src/policy.ts";
 
 function fakeManager(): SeatbeltManager & { resetCalls: number } {
 	return {
@@ -52,7 +53,7 @@ const sessionCtx = {
 };
 
 describe("sandboxed grep and find", () => {
-	it("grep execute spawns rg via runSandboxedArgv", async () => {
+	it("grep execute spawns ripgrep via runSandboxedArgv, never BSD grep", async () => {
 		const argvLog: string[][] = [];
 		const runArgv = async (argv: readonly string[]) => {
 			argvLog.push([...argv]);
@@ -66,9 +67,10 @@ describe("sandboxed grep and find", () => {
 		assert.ok(grep, "grep tool registered");
 		await grep.execute("id", { pattern: "hit" }, undefined, () => {});
 		assert.ok(
-			argvLog.some((argv) => argv[0] === "rg"),
-			`expected rg via helper, got ${JSON.stringify(argvLog)}`,
+			argvLog.some((argv) => argv[0] === RIPGREP_BIN),
+			`expected ${RIPGREP_BIN} via helper, got ${JSON.stringify(argvLog)}`,
 		);
+		assert.ok(!argvLog.some((argv) => argv[0] === "grep" || argv[0] === "/usr/bin/grep"));
 	});
 
 	it("find glob goes through the helper", async () => {
@@ -110,7 +112,7 @@ describe("sandboxed grep and find", () => {
 		assert.equal(manager.resetCalls, 1);
 	});
 
-	it("executeSandboxedGrep uses the helper for rg", async () => {
+	it("executeSandboxedGrep uses the helper for ripgrep only", async () => {
 		const argvLog: string[][] = [];
 		await executeSandboxedGrep(
 			{ pattern: "foo" },
@@ -122,6 +124,8 @@ describe("sandboxed grep and find", () => {
 				},
 			},
 		);
-		assert.equal(argvLog[0][0], "rg");
+		assert.equal(argvLog[0][0], RIPGREP_BIN);
+		assert.notEqual(argvLog[0][0], "grep");
+		assert.notEqual(argvLog[0][0], "/usr/bin/grep");
 	});
 });

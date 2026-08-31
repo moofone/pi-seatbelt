@@ -37,7 +37,8 @@ export type SeatbeltDeps = {
 export function createSeatbeltExtension(deps: SeatbeltDeps = {}) {
 	return function seatbelt(pi: ExtensionAPI) {
 		const manager = deps.manager ?? SandboxManager;
-		const runArgv = deps.runArgv ?? runSandboxedArgv;
+		const runArgv: RunSandboxedArgv =
+			deps.runArgv ?? ((argv, options = {}) => runSandboxedArgv(argv, { ...options, manager }));
 		const runBash = deps.runBash ?? runSandboxedBash;
 		const platform = deps.platform ?? process.platform;
 
@@ -59,7 +60,7 @@ export function createSeatbeltExtension(deps: SeatbeltDeps = {}) {
 		let sandboxEnabled = false;
 		let sandboxInitialized = false;
 
-		const bashOps = () => createSandboxedBashOps({ runBash });
+		const bashOps = () => createSandboxedBashOps({ runBash, manager });
 		const readOps = () => createSandboxedReadOps(runArgv);
 		const writeOps = () => createSandboxedWriteOps(runArgv);
 		const editOps = () => createSandboxedEditOps(runArgv);

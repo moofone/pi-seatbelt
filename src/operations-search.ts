@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { FindOperations } from "@earendil-works/pi-coding-agent";
 import type { RunSandboxedArgv } from "./operations-fs.ts";
+import { RIPGREP_BIN } from "./policy.ts";
 import { runSandboxedArgv } from "./sandbox-exec.ts";
 
 export type GrepExecuteParams = {
@@ -18,14 +19,14 @@ export type GrepExecuteResult = {
 	details?: { matchLimitReached?: number };
 };
 
-/** Run rg through the sandbox helper. Never spawn rg unsandboxed. */
+/** Run ripgrep through the sandbox helper. Never spawn BSD/GNU grep, and never spawn rg unsandboxed. */
 export async function executeSandboxedGrep(
 	params: GrepExecuteParams,
 	options: { cwd: string; signal?: AbortSignal; runArgv?: RunSandboxedArgv },
 ): Promise<GrepExecuteResult> {
 	const runArgv = options.runArgv ?? runSandboxedArgv;
 	const searchPath = path.resolve(options.cwd, params.path || ".");
-	const argv: string[] = ["rg", "--line-number", "--color=never", "--hidden"];
+	const argv: string[] = [RIPGREP_BIN, "--line-number", "--color=never", "--hidden"];
 	if (params.ignoreCase) argv.push("--ignore-case");
 	if (params.literal) argv.push("--fixed-strings");
 	if (params.glob) argv.push("--glob", params.glob);

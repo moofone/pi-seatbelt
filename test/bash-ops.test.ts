@@ -93,4 +93,16 @@ describe("bash / user_bash lifecycle", () => {
 		const result = (pi.handlers.user_bash as Function)();
 		assert.ok(result?.operations?.exec);
 	});
+
+	it("sandboxed bash tool uses the injected manager after initialize", async () => {
+		const manager = fakeManager();
+		const pi = mockPi({ "no-sandbox": false });
+		createSeatbeltExtension({ manager, platform: "darwin" })(pi as never);
+		await (pi.handlers.session_start as Function)({}, sessionCtx);
+
+		const bash = pi.tools.find((tool) => tool.name === "bash");
+		assert.ok(bash?.execute);
+		await bash.execute("id", { command: "true" }, undefined, undefined);
+		assert.deepEqual(manager.calls.wrap, ["true"]);
+	});
 });

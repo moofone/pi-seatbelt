@@ -76,6 +76,11 @@ function spawnWrapped(
 				: options.stdin;
 
 	return new Promise((resolve, reject) => {
+		if (options.signal?.aborted) {
+			reject(new Error("aborted"));
+			return;
+		}
+
 		const child = spawnFn(command, args, {
 			cwd: options.cwd,
 			env,

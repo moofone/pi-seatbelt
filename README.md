@@ -4,7 +4,7 @@ Pi extension that runs **every built-in FS/exec tool** through [`@anthropic-ai/s
 
 This **is** the Anthropic sandbox-runtime wrapper — not a JS path gate. OS policy is the boundary.
 
-Covered tools: `bash`, `user_bash` (`!` commands), `read`, `write`, `edit`, `ls`, `grep` (`rg`), `find` (`fd`).
+Covered tools: `bash`, `user_bash` (`!` commands), `read`, `write`, `edit`, `ls`, `grep` (ripgrep only), `find` (`fd`).
 
 MCP and other extension tools are out of scope.
 
@@ -19,6 +19,8 @@ Writes default-deny except:
 `/Users/greg/orchestrator`, `$HOME`, and `$HOME/Documents` are **not** writable.
 
 Credential reads denied: `~/.ssh`, `~/.aws`, `~/.gnupg`, `~/.netrc`, `~/.config/gh`.
+
+Search: the Pi `grep` tool invokes `/opt/homebrew/bin/rg` (ripgrep 15). BSD/GNU `grep` / `egrep` / `fgrep` (`/usr/bin/grep` and common Homebrew/local prefixes) are `denyRead`, so the sandbox cannot exec them.
 
 Network: `allowedDomains: ["*"]`, `allowLocalBinding: true`.
 

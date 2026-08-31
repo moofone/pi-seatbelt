@@ -47,8 +47,30 @@ function fakeSpawn(spawnCalls: Array<{ command: string; args: readonly string[] 
 		child.kill = () => true;
 		queueMicrotask(() => {
 			child.stdout.emit("data", Buffer.from("hi\n"));
+			child.stderr.emit("data", Buffer.from("error\n"));
 			child.emit("close", 0);
 		});
+		return child;
+	};
+}
+
+function waitingSpawn(kills: string[], onSpawn: () => void): SandboxSpawn {
+	return () => {
+		const child = new EventEmitter() as EventEmitter & {
+			stdout: EventEmitter;
+			stderr: EventEmitter;
+			stdin: { write: () => void; end: () => void };
+			kill: (signal?: NodeJS.Signals) => boolean;
+		};
+		child.stdout = new EventEmitter();
+		child.stderr = new EventEmitter();
+		child.stdin = { write() {}, end() {} };
+		child.kill = (signal) => {
+			kills.push(signal ?? "SIGKILL");
+			queueMicrotask(() => child.emit("close", null));
+			return true;
+		};
+		onSpawn();
 		return child;
 	};
 }
@@ -57,9 +79,11 @@ describe("runSandboxedArgv", () => {
 	it("calls wrapWithSandboxArgv and spawns the wrapped argv, not echo", async () => {
 		const manager = fakeManager();
 		const spawnCalls: Array<{ command: string; args: readonly string[] }> = [];
+		const streamed: Buffer[] = [];
 		const result = await runSandboxedArgv(["/bin/echo", "hi"], {
 			manager,
 			spawn: fakeSpawn(spawnCalls),
+			onData: (data) => streamed.push(data),
 		});
 		assert.equal(manager.wrapArgvCalls.length, 1);
 		assert.equal(manager.wrapCalls.length, 0);
@@ -69,6 +93,8 @@ describe("runSandboxedArgv", () => {
 		assert.notEqual(spawnCalls[0].command, "echo");
 		assert.equal(result.exitCode, 0);
 		assert.equal(result.stdout.toString(), "hi\n");
+		assert.equal(result.stderr.toString(), "error\n");
+		assert.deepEqual(streamed.map((data) => data.toString()), ["hi\n", "error\n"]);
 	});
 
 	it("rejects and does not spawn when wrapWithSandboxArgv fails", async () => {
@@ -83,6 +109,42 @@ describe("runSandboxedArgv", () => {
 			/wrap failed/,
 		);
 		assert.equal(spawnCalls.length, 0);
+	});
+
+	it("kills the process and rejects when aborted", async () => {
+		const controller = new AbortController();
+		const kills: string[] = [];
+		let resolveSpawned!: () => void;
+		const spawned = new Promise<void>((resolve) => {
+			resolveSpawned = resolve;
+		});
+		const run = runSandboxedArgv(["sleep", "1"], {
+			manager: fakeManager(),
+			signal: controller.signal,
+			spawn: waitingSpawn(kills, resolveSpawned),
+		});
+
+		await spawned;
+		controller.abort();
+		await assert.rejects(run, /aborted/);
+		assert.deepEqual(kills, ["SIGKILL"]);
+	});
+
+	it("kills the process and rejects on timeout", async () => {
+		const kills: string[] = [];
+		let resolveSpawned!: () => void;
+		const spawned = new Promise<void>((resolve) => {
+			resolveSpawned = resolve;
+		});
+		const run = runSandboxedBash("sleep 1", {
+			manager: fakeManager(),
+			timeout: 0.01,
+			spawn: waitingSpawn(kills, resolveSpawned),
+		});
+
+		await spawned;
+		await assert.rejects(run, /timeout:0.01/);
+		assert.deepEqual(kills, ["SIGKILL"]);
 	});
 });
 
@@ -111,6 +173,23 @@ describe("runSandboxedBash", () => {
 					spawn: fakeSpawn(spawnCalls),
 				}),
 			/wrap failed/,
+		);
+		assert.equal(spawnCalls.length, 0);
+	});
+
+	it("does not spawn when already aborted", async () => {
+		const controller = new AbortController();
+		controller.abort();
+		const spawnCalls: Array<{ command: string; args: readonly string[] }> = [];
+
+		await assert.rejects(
+			() =>
+				runSandboxedBash("echo hi", {
+					manager: fakeManager(),
+					signal: controller.signal,
+					spawn: fakeSpawn(spawnCalls),
+				}),
+			/aborted/,
 		);
 		assert.equal(spawnCalls.length, 0);
 	});
