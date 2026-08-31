@@ -20,8 +20,6 @@ Writes default-deny except:
 
 Credential reads denied: `~/.ssh`, `~/.aws`, `~/.gnupg`, `~/.netrc`, `~/.config/gh`.
 
-Search: the Pi `grep` tool invokes `/opt/homebrew/bin/rg` (ripgrep 15). BSD/GNU `grep` / `egrep` / `fgrep` (`/usr/bin/grep` and common Homebrew/local prefixes) are `denyRead`, so the sandbox cannot exec them.
-
 Network: `allowedDomains: ["*"]`, `allowLocalBinding: true`.
 
 ## Usage

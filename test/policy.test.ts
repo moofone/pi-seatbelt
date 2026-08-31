@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { describe, it } from "node:test";
-import {
-	GIT_WRITE_ROOT,
-	GREP_DENY_READ,
-	RIPGREP_BIN,
-	buildDefaultSeatbeltConfig,
-} from "../src/policy.ts";
+import { GIT_WRITE_ROOT, buildDefaultSeatbeltConfig } from "../src/policy.ts";
 
 const HOME = "/Users/greg";
 
@@ -42,26 +37,20 @@ describe("buildDefaultSeatbeltConfig", () => {
 		assert.ok(!allowWrite.includes(path.join(HOME, "Documents")));
 	});
 
-	it("denies credential reads", () => {
-		for (const p of [
+	it("denies only credential reads", () => {
+		assert.deepEqual(denyRead, [
 			path.join(HOME, ".ssh"),
 			path.join(HOME, ".aws"),
 			path.join(HOME, ".gnupg"),
 			path.join(HOME, ".netrc"),
 			path.join(HOME, ".config/gh"),
-		]) {
-			assert.ok(denyRead.includes(p), `denyRead missing ${p}`);
-		}
+		]);
 	});
 
-	it("denies BSD/GNU grep binaries and does not deny ripgrep", () => {
-		assert.ok(GREP_DENY_READ.includes("/usr/bin/grep"));
-		for (const p of GREP_DENY_READ) {
-			assert.ok(denyRead.includes(p), `denyRead missing grep path ${p}`);
-		}
-		assert.equal(RIPGREP_BIN, "/opt/homebrew/bin/rg");
-		assert.ok(!denyRead.includes(RIPGREP_BIN));
-		assert.ok(!GREP_DENY_READ.includes(RIPGREP_BIN));
+	it("does not deny grep binaries or ripgrep", () => {
+		assert.ok(!denyRead.includes("/usr/bin/grep"));
+		assert.ok(!denyRead.includes("/opt/homebrew/bin/rg"));
+		assert.deepEqual(cfg.filesystem.denyWrite, []);
 	});
 
 	it("allows all network domains with local binding", () => {
