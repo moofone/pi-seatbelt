@@ -3,9 +3,25 @@
   "version": "0.0.0",
   "private": true,
   "description": "macOS Seatbelt sandbox for all Pi built-in tools.",
-  "keywords": ["pi-package", "pi-extension", "sandbox", "seatbelt"],
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "sandbox",
+    "seatbelt"
+  ],
   "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
   "pi": {
-    "extensions": ["./src/index.ts"]
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "dependencies": {
+    "@anthropic-ai/sandbox-runtime": "0.0.74"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
   }
 }
